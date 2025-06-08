@@ -25,6 +25,8 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
   const router = useRouter();
   const [chatList] = api.chat.list.useSuspenseQuery();
 
+  const utils = api.useUtils();
+
   // Only call if chatId is defined
   const [initialMessages] = chatId
     ? api.chat.getMessages.useSuspenseQuery({ chatId })
@@ -33,6 +35,7 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
   const createChat = api.chat.create.useMutation({
     onSuccess: (newChat) => {
       router.push(`/chat/${newChat.id}`);
+      void utils.chat.list.invalidate();
     },
   });
 
@@ -46,10 +49,7 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
                 variant="outline"
                 className="w-full justify-start"
                 onClick={() => {
-                  createChat.mutate({
-                    messages: [],
-                    initialMessage: "New Chat",
-                  });
+                  createChat.mutate({});
                 }}
                 disabled={createChat.isPending}
               >
