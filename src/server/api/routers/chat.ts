@@ -40,4 +40,45 @@ export const chatRouter = createTRPCRouter({
 
       return chatMessages;
     }),
+
+  create: protectedProcedure
+    .input(
+      z.object({
+        messages: z.array(
+          z.object({
+            role: z.enum(["user", "assistant"]),
+            content: z.string(),
+          }),
+        ),
+        initialMessage: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Create a new chat session in the database
+      const [newChat] = await ctx.db
+        .insert(chats)
+        .values({
+          userId: ctx.session.user.id,
+          title: input.initialMessage.substring(0, 100),
+        })
+        .returning();
+
+      if (!newChat) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Could not create chat",
+        });
+      }
+
+      // Save the messages to the newly created chat
+      await ctx.db.insert(messages).values(
+        input.messages.map((message) => ({
+          chatId: newChat.id,
+          role: message.role,
+          content: message.content,
+        })),
+      );
+
+      return newChat;
+    }),
 });
