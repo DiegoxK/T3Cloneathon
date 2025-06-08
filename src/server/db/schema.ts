@@ -2,34 +2,50 @@ import { relations, sql } from "drizzle-orm";
 import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
-/**
- * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
- * database instance for multiple projects.
- *
- * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
- */
 export const createTable = pgTableCreator((name) => `T3Cloneathon_${name}`);
 
-export const posts = createTable(
-  "post",
-  (d) => ({
-    id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
-    name: d.varchar({ length: 256 }),
-    createdById: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => users.id),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-  }),
-  (t) => [
-    index("created_by_idx").on(t.createdById),
-    index("name_idx").on(t.name),
-  ],
-);
+export const chats = createTable("chat", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  title: d.varchar({ length: 256 }).notNull(),
+  userId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => users.id),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+export const chatsRelations = relations(chats, ({ one, many }) => ({
+  user: one(users, { fields: [chats.userId], references: [users.id] }),
+  messages: many(messages),
+}));
+
+export const messages = createTable("message", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  chatId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => chats.id),
+  role: d.varchar({ length: 10 }).$type<"user" | "assistant">().notNull(),
+  content: d.text().notNull(),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),
+}));
 
 export const users = createTable("user", (d) => ({
   id: d
@@ -50,6 +66,7 @@ export const users = createTable("user", (d) => ({
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
+  chats: many(chats),
 }));
 
 export const accounts = createTable(
