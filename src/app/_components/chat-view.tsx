@@ -16,14 +16,15 @@ interface ChatViewProps {
 }
 
 export function ChatView({ chatId, initialMessages }: ChatViewProps) {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } =
-    useChat({
-      initialMessages: initialMessages,
-      body: {
-        chatId: chatId,
-      },
-      api: "/api/chat",
-    });
+  const { messages, input, handleInputChange, handleSubmit, status } = useChat({
+    initialMessages: initialMessages,
+    body: {
+      chatId: chatId,
+    },
+    api: "/api/chat",
+  });
+
+  const isProcessing = status === "submitted" || status === "streaming";
 
   return (
     <div className="flex h-full flex-col">
@@ -54,9 +55,9 @@ export function ChatView({ chatId, initialMessages }: ChatViewProps) {
             value={input}
             placeholder="Ask me anything..."
             onChange={handleInputChange}
-            disabled={isLoading}
+            disabled={isProcessing}
           />
-          <Button type="submit" disabled={isLoading || !input.trim()}>
+          <Button type="submit" disabled={isProcessing || !input.trim()}>
             <SendHorizonal className="size-5" />
             <span className="sr-only">Send</span>
           </Button>
