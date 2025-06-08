@@ -42,24 +42,13 @@ export const chatRouter = createTRPCRouter({
     }),
 
   create: protectedProcedure
-    .input(
-      z.object({
-        messages: z.array(
-          z.object({
-            role: z.enum(["user", "assistant"]),
-            content: z.string(),
-          }),
-        ),
-        initialMessage: z.string(),
-      }),
-    )
+    .input(z.object({ title: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      // Create a new chat session in the database
       const [newChat] = await ctx.db
         .insert(chats)
         .values({
           userId: ctx.session.user.id,
-          title: input.initialMessage.substring(0, 100),
+          title: input.title ?? "New Chat",
         })
         .returning();
 
@@ -69,15 +58,6 @@ export const chatRouter = createTRPCRouter({
           message: "Could not create chat",
         });
       }
-
-      // Save the messages to the newly created chat
-      await ctx.db.insert(messages).values(
-        input.messages.map((message) => ({
-          chatId: newChat.id,
-          role: message.role,
-          content: message.content,
-        })),
-      );
 
       return newChat;
     }),
