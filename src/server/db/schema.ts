@@ -62,6 +62,7 @@ export const users = createTable("user", (d) => ({
     })
     .default(sql`CURRENT_TIMESTAMP`),
   image: d.varchar({ length: 255 }),
+  encryptedApiKey: d.text(),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
