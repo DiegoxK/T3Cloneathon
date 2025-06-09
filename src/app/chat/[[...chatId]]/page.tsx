@@ -4,18 +4,21 @@ import { redirect } from "next/navigation";
 import { ChatLayout } from "@/app/_components/chat-layout";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
-export default async function ChatPage({
-  params,
-}: {
-  params: { chatId?: string[] };
-}) {
+interface ChatPageProps {
+  params: Promise<{
+    chatId?: string[];
+  }>;
+}
+
+export default async function ChatPage({ params }: ChatPageProps) {
   const session = await auth();
 
   if (!session?.user?.id) {
     redirect("/api/auth/signin");
   }
 
-  const chatId = params.chatId?.[0];
+  const resolvedParams = await params;
+  const chatId = resolvedParams.chatId?.[0];
 
   void api.chat.list.prefetch();
   if (chatId) {
