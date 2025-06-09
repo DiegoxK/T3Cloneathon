@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
 import { chats, messages } from "@/server/db/schema";
 
 import { TRPCError } from "@trpc/server";
@@ -94,5 +98,63 @@ export const chatRouter = createTRPCRouter({
       ]);
 
       return { chatId: currentChatId };
+    }),
+
+  updateSharing: protectedProcedure
+    .input(
+      z.object({
+        chatId: z.string(),
+        isPublic: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify the user owns the chat they're trying to share
+      const chat = await ctx.db.query.chats.findFirst({
+        where: and(
+          eq(chats.id, input.chatId),
+          eq(chats.userId, ctx.session.user.id),
+        ),
+      });
+
+      if (!chat) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      // If they own it, update the isPublic flag
+      await ctx.db
+        .update(chats)
+        .set({ isPublic: input.isPublic })
+        .where(eq(chats.id, input.chatId));
+
+      return { success: true };
+    }),
+
+  getShared: publicProcedure
+    .input(z.object({ chatId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const chat = await ctx.db.query.chats.findFirst({
+        where: and(
+          eq(chats.id, input.chatId),
+          eq(chats.isPublic, true), // Only return if isPublic is true
+        ),
+
+        // Fetch the messages and the owner's name
+        with: {
+          messages: {
+            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+          },
+          user: {
+            columns: {
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (!chat) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      return chat;
     }),
 });
