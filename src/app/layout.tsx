@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import "highlight.js/styles/base16/ros-pine-moon.css";
 
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
