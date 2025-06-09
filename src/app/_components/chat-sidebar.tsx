@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { ShareChatButton } from "./share-chat-button";
 
 type ChatList = RouterOutputs["chat"]["list"];
 
@@ -43,6 +44,9 @@ export function ChatSidebar({ chats, activeChatId }: ChatSidebarProps) {
               <span className="truncate">{chat.title}</span>
             </SidebarMenuButton>
           </Link>
+          <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100">
+            <ShareChatButton chat={chat} />
+          </div>
         </SidebarMenuItem>
       ))}
     </SidebarMenu>
