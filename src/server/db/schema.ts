@@ -14,6 +14,7 @@ export const chats = createTable("chat", (d) => ({
     .varchar({ length: 255 })
     .notNull()
     .references(() => users.id),
+  isPublic: d.boolean().notNull().default(false),
   createdAt: d
     .timestamp({ withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
