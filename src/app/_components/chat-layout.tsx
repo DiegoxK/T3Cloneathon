@@ -1,9 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { PlusIcon } from "lucide-react";
 
-import { api, type RouterOutputs } from "@/trpc/react";
+import { api } from "@/trpc/react";
 
 import {
   Sidebar,
@@ -19,27 +18,15 @@ import { Button } from "@/components/ui/button";
 import { ChatSidebar } from "./chat-sidebar";
 import { ChatView } from "./chat-view";
 import { SettingsDialog } from "./settings-dialog";
-
-// type ChatList = RouterOutputs["chat"]["list"];
-// type MessagesList = RouterOutputs["chat"]["getMessages"];
+import Link from "next/link";
 
 export function ChatLayout({ chatId }: { chatId?: string }) {
-  const router = useRouter();
   const [chatList] = api.chat.list.useSuspenseQuery();
-
-  const utils = api.useUtils();
 
   // Only call if chatId is defined
   const [initialMessages] = chatId
     ? api.chat.getMessages.useSuspenseQuery({ chatId })
     : [undefined];
-
-  const createChat = api.chat.create.useMutation({
-    onSuccess: (newChat) => {
-      router.push(`/chat/${newChat.id}`);
-      void utils.chat.list.invalidate();
-    },
-  });
 
   return (
     <div className="flex h-screen w-full items-start">
@@ -47,17 +34,12 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
         <SidebarHeader className="p-2">
           <SidebarMenu>
             <SidebarMenuItem>
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  createChat.mutate({});
-                }}
-                disabled={createChat.isPending}
-              >
-                <PlusIcon className="mr-2 size-4" />
-                <span>New Chat</span>
-              </Button>
+              <Link href="/chat" className="w-full">
+                <Button variant="outline" className="w-full justify-start">
+                  <PlusIcon className="mr-2 size-4" />
+                  <span>New Chat</span>
+                </Button>
+              </Link>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
