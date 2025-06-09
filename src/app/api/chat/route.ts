@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     },
   });
 
-  const modelToUse = data?.model ?? "openai/gpt-4o";
+  const modelToUse = data?.model ?? "anthropic/claude-3-haiku";
 
   const result = streamText({
     model: openrouter(modelToUse),
