@@ -36,7 +36,7 @@ export function ChatSidebar({ chats, activeChatId }: ChatSidebarProps) {
             <SidebarMenuButton
               className={cn(
                 "w-full justify-start",
-                activeChatId === chat.id && "bg-sidebar-accent",
+                activeChatId === chat.id && "bg-sidebar-accent cursor-default",
               )}
             >
               <MessageSquare className="mr-2 size-4" />
