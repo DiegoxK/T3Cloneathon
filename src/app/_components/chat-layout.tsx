@@ -8,6 +8,7 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/button";
 
 import { ChatSidebar } from "./chat-sidebar";
 import { ChatView } from "./chat-view";
+import { SettingsDialog } from "./settings-dialog";
 
 // type ChatList = RouterOutputs["chat"]["list"];
 // type MessagesList = RouterOutputs["chat"]["getMessages"];
@@ -62,6 +64,9 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
         <SidebarContent className="p-2">
           <ChatSidebar chats={chatList} activeChatId={chatId} />
         </SidebarContent>
+        <SidebarFooter className="p-2">
+          <SettingsDialog />
+        </SidebarFooter>
       </Sidebar>
 
       <main className="flex h-full flex-1 flex-col">
