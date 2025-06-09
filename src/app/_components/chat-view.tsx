@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SendHorizonal } from "lucide-react";
 
+import { ChatMessage } from "./chat-message";
+
 type MessagesList = RouterOutputs["chat"]["getMessages"];
 
 interface ChatViewProps {
@@ -31,14 +33,7 @@ export function ChatView({ chatId, initialMessages }: ChatViewProps) {
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.length > 0 ? (
-            messages.map((m) => (
-              <div key={m.id} className="whitespace-pre-wrap">
-                <strong className="font-semibold">
-                  {m.role === "user" ? "You" : "AI"}:
-                </strong>
-                <p>{m.content}</p>
-              </div>
-            ))
+            messages.map((m) => <ChatMessage key={m.id} message={m} />)
           ) : (
             <div className="flex h-full items-center justify-center">
               <p className="text-muted-foreground">
