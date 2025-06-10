@@ -24,7 +24,7 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
   const [chatList] = api.chat.list.useSuspenseQuery();
 
   // Only call if chatId is defined
-  const [initialMessages] = chatId
+  const [messages] = chatId
     ? api.chat.getMessages.useSuspenseQuery({ chatId })
     : [[]];
 
@@ -51,13 +51,13 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
         </SidebarFooter>
       </Sidebar>
 
-      <main className="flex h-full flex-1 flex-col">
+      <main className="flex h-screen w-full flex-col overflow-hidden">
         <div className="flex items-center gap-2 border-b p-2">
           <SidebarTrigger />
           <h2 className="font-semibold">T3 Chat Clone</h2>
         </div>
 
-        <ChatView chatId={chatId} initialMessages={initialMessages} />
+        <ChatView chatId={chatId} messages={messages} />
       </main>
     </div>
   );
