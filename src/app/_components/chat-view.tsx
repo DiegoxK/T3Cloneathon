@@ -1,6 +1,6 @@
 "use client";
 
-import { useChat, type Message } from "@ai-sdk/react";
+import { type Message } from "@ai-sdk/react";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,10 @@ import { SendHorizonal } from "lucide-react";
 
 import { ChatMessage } from "./chat-message";
 import { useRouter } from "next/navigation";
-import { useRef } from "react";
+import { useState } from "react";
 
-import { generateId } from "ai";
+import { generateId, type CoreMessage } from "ai";
+import { useChatStream } from "@/hooks/use-chat-stream";
 
 type MessagesList = RouterOutputs["chat"]["getMessages"];
 
@@ -25,8 +26,8 @@ export function ChatView({ chatId, initialMessages }: ChatViewProps) {
   const router = useRouter();
   const utils = api.useUtils();
 
-  // create a ref to hold the user's message
-  const lastUserMessage = useRef<Message | null>(null);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<CoreMessage[]>(initialMessages);
 
   const addMessage = api.chat.addMessage.useMutation({
     onSuccess: (data) => {
@@ -43,33 +44,18 @@ export function ChatView({ chatId, initialMessages }: ChatViewProps) {
     },
   });
 
-  const { messages, input, setInput, append, status } = useChat({
-    initialMessages,
-    id: chatId,
-    body: {
-      chatId: chatId,
-    },
-    api: "/api/chat",
-    onFinish: (assistantMessage) => {
-      /**
-       * useChat messages array appears to be outdated when onFinish is called
-       * lastUserMessage ref will be use here to get the last user message
-       */
-      const userMessage = lastUserMessage.current;
-      if (!userMessage) return;
+  const { stream, generation, isStreaming } = useChatStream({
+    onFinish: (assistantContent) => {
+      const userMessage = messages[messages.length - 1];
+      if (!userMessage || userMessage.role !== "user") return;
 
       addMessage.mutate({
         chatId: chatId,
         messageContent: userMessage.content,
-        assistantContent: assistantMessage.content,
+        assistantContent: assistantContent,
       });
-
-      // Clear the ref for the next message
-      lastUserMessage.current = null;
     },
   });
-
-  const isProcessing = status === "submitted" || status === "streaming";
 
   // Custom submit handler
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -82,24 +68,33 @@ export function ChatView({ chatId, initialMessages }: ChatViewProps) {
       content: input,
     };
 
-    // Store userMessage in ref
-    lastUserMessage.current = userMessage;
-
-    // Append message into useChat hook messages
-    void append(userMessage);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput("");
+
+    stream({
+      messages: newMessages,
+    });
   };
   return (
     <div className="flex h-full flex-col">
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          {messages.length > 0 ? (
-            messages.map((m) => <ChatMessage key={m.id} message={m} />)
-          ) : (
+          {messages.map((m) => (
+            <ChatMessage key={m.id} message={m} />
+          ))}
+          {isStreaming && (
+            <ChatMessage
+              message={{
+                id: "streaming-response",
+                role: "assistant",
+                content: generation,
+              }}
+            />
+          )}
+          {messages.length === 0 && !isStreaming && (
             <div className="flex h-full items-center justify-center">
-              <p className="text-muted-foreground">
-                Start a conversation by typing below.
-              </p>
+              <p className="text-muted-foreground">How can I help you today?</p>
             </div>
           )}
         </div>
@@ -111,9 +106,9 @@ export function ChatView({ chatId, initialMessages }: ChatViewProps) {
             value={input}
             placeholder="Ask me anything..."
             onChange={(e) => setInput(e.target.value)}
-            disabled={isProcessing}
+            disabled={isStreaming}
           />
-          <Button type="submit" disabled={isProcessing || !input.trim()}>
+          <Button type="submit" disabled={isStreaming || !input.trim()}>
             <SendHorizonal className="size-5" />
             <span className="sr-only">Send</span>
           </Button>
