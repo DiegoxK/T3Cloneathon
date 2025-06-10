@@ -8,56 +8,61 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SendHorizonal } from "lucide-react";
 
 import { ChatMessage } from "./chat-message";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { generateId, type CoreMessage } from "ai";
 import { useChatStream } from "@/hooks/use-chat-stream";
+import { useRouter } from "next/navigation";
 
-type MessagesList = RouterOutputs["chat"]["getMessages"][number];
+type Message = RouterOutputs["chat"]["getMessages"][number];
 
 interface ChatViewProps {
   chatId?: string;
-  messages: MessagesList[];
+  messages: Message[];
 }
 
 export function ChatView({ chatId, messages }: ChatViewProps) {
-  const router = useRouter();
   const utils = api.useUtils();
+  const router = useRouter();
 
   const [input, setInput] = useState("");
+  const [firstMessage, setFirstMessage] = useState<Message>();
 
   const { stream, generation, isStreaming } = useChatStream({
     onFinish: (assistantContent) => {
-      const userMessage = messages[messages.length - 1];
-      if (!userMessage || userMessage.role !== "user") return;
-
       addMessage.mutate({
-        chatId: chatId,
+        chatId,
         role: "assistant",
-        messageContent: userMessage.content,
+        messageContent: assistantContent,
       });
     },
   });
 
+  if (chatId && messages.length === 1) {
+    stream({
+      messages,
+    });
+  }
+
   const addMessage = api.chat.addMessage.useMutation({
     onMutate: (input) => {
+      void utils.chat.getMessages.cancel();
+      const tempId = generateId();
+
+      const optimisticEntry: Message = {
+        id: tempId,
+        createdAt: new Date(),
+        chatId: "",
+        role: input.role,
+        content: input.messageContent,
+      };
+
       if (chatId) {
-        void utils.chat.getMessages.cancel();
+        const previousMessages = utils.chat.getMessages.getData({
+          chatId,
+        });
 
-        const previousMessages = utils.chat.getMessages.getData({ chatId });
-
-        console.log(previousMessages);
-
-        const tempId = generateId();
-
-        const optimisticEntry: MessagesList = {
-          id: tempId,
-          createdAt: new Date(),
-          chatId: input.chatId!,
-          role: input.role,
-          content: input.messageContent,
-        };
+        optimisticEntry.chatId = chatId;
 
         utils.chat.getMessages.setData({ chatId }, () => {
           if (!previousMessages) return undefined;
@@ -66,20 +71,30 @@ export function ChatView({ chatId, messages }: ChatViewProps) {
         });
 
         if (input.role === "user") {
-          const currentData = utils.chat.getMessages.getData({ chatId });
+          const currentData = utils.chat.getMessages.getData({
+            chatId,
+          });
 
-          console.log(currentData);
-          // stream(
-          //   messages.
-          // )
+          if (!currentData) {
+            throw new Error("Failed to get optimistic data");
+          }
+
+          stream({
+            messages: currentData,
+          });
         }
+      }
+      if (!chatId && input.role === "user") {
+        setFirstMessage(optimisticEntry);
       }
     },
     onSuccess: (data) => {
       if (!chatId) {
         router.push(`/chat/${data.chatId}`, { scroll: false });
       }
+
       void utils.chat.list.invalidate();
+
       if (chatId) {
         void utils.chat.getMessages.invalidate({ chatId });
       }
@@ -105,6 +120,7 @@ export function ChatView({ chatId, messages }: ChatViewProps) {
     <div className="flex flex-col">
       <ScrollArea className="h-[calc(100vh-115px)] p-4">
         <div className="space-y-4">
+          {!chatId && firstMessage && <ChatMessage message={firstMessage} />}
           {messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
           ))}
