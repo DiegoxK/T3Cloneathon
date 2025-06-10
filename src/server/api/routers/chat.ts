@@ -52,8 +52,8 @@ export const chatRouter = createTRPCRouter({
     .input(
       z.object({
         chatId: z.string().optional(),
+        role: z.enum(["user", "assistant"]),
         messageContent: z.string(),
-        assistantContent: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -89,11 +89,10 @@ export const chatRouter = createTRPCRouter({
 
       // Save the messages
       await ctx.db.insert(messages).values([
-        { chatId: currentChatId, role: "user", content: input.messageContent },
         {
           chatId: currentChatId,
-          role: "assistant",
-          content: input.assistantContent,
+          role: input.role,
+          content: input.messageContent,
         },
       ]);
 
