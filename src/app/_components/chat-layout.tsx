@@ -26,7 +26,7 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
   // Only call if chatId is defined
   const [initialMessages] = chatId
     ? api.chat.getMessages.useSuspenseQuery({ chatId })
-    : [undefined];
+    : [[]];
 
   return (
     <div className="flex h-screen w-full items-start">
@@ -57,7 +57,7 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
           <h2 className="font-semibold">T3 Chat Clone</h2>
         </div>
 
-        <ChatView chatId={chatId} initialMessages={initialMessages!} />
+        <ChatView chatId={chatId} initialMessages={initialMessages} />
       </main>
     </div>
   );
