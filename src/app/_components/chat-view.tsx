@@ -1,6 +1,5 @@
 "use client";
 
-import { type Message } from "@ai-sdk/react";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 import { Button } from "@/components/ui/button";
@@ -15,21 +14,67 @@ import { useState } from "react";
 import { generateId, type CoreMessage } from "ai";
 import { useChatStream } from "@/hooks/use-chat-stream";
 
-type MessagesList = RouterOutputs["chat"]["getMessages"];
+type MessagesList = RouterOutputs["chat"]["getMessages"][number];
 
 interface ChatViewProps {
   chatId?: string;
-  initialMessages: MessagesList;
+  messages: MessagesList[];
 }
 
-export function ChatView({ chatId, initialMessages }: ChatViewProps) {
+export function ChatView({ chatId, messages }: ChatViewProps) {
   const router = useRouter();
   const utils = api.useUtils();
 
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<CoreMessage[]>(initialMessages);
+
+  const { stream, generation, isStreaming } = useChatStream({
+    onFinish: (assistantContent) => {
+      const userMessage = messages[messages.length - 1];
+      if (!userMessage || userMessage.role !== "user") return;
+
+      addMessage.mutate({
+        chatId: chatId,
+        role: "assistant",
+        messageContent: userMessage.content,
+      });
+    },
+  });
 
   const addMessage = api.chat.addMessage.useMutation({
+    onMutate: (input) => {
+      if (chatId) {
+        void utils.chat.getMessages.cancel();
+
+        const previousMessages = utils.chat.getMessages.getData({ chatId });
+
+        console.log(previousMessages);
+
+        const tempId = generateId();
+
+        const optimisticEntry: MessagesList = {
+          id: tempId,
+          createdAt: new Date(),
+          chatId: input.chatId!,
+          role: input.role,
+          content: input.messageContent,
+        };
+
+        utils.chat.getMessages.setData({ chatId }, () => {
+          if (!previousMessages) return undefined;
+
+          return [...previousMessages, optimisticEntry];
+        });
+
+        if (input.role === "user") {
+          const currentData = utils.chat.getMessages.getData({ chatId });
+
+          console.log(currentData);
+          // stream(
+          //   messages.
+          // )
+        }
+      }
+    },
     onSuccess: (data) => {
       if (!chatId) {
         router.push(`/chat/${data.chatId}`, { scroll: false });
@@ -44,44 +89,24 @@ export function ChatView({ chatId, initialMessages }: ChatViewProps) {
     },
   });
 
-  const { stream, generation, isStreaming } = useChatStream({
-    onFinish: (assistantContent) => {
-      const userMessage = messages[messages.length - 1];
-      if (!userMessage || userMessage.role !== "user") return;
-
-      addMessage.mutate({
-        chatId: chatId,
-        messageContent: userMessage.content,
-        assistantContent: assistantContent,
-      });
-    },
-  });
-
   // Custom submit handler
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!input) return;
 
-    const userMessage: Message = {
-      id: generateId(),
+    addMessage.mutate({
+      chatId: chatId,
       role: "user",
-      content: input,
-    };
-
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
-    setInput("");
-
-    stream({
-      messages: newMessages,
+      messageContent: input,
     });
   };
+
   return (
-    <div className="flex h-full flex-col">
-      <ScrollArea className="flex-1 p-4">
+    <div className="flex flex-col">
+      <ScrollArea className="h-[calc(100vh-115px)] p-4">
         <div className="space-y-4">
-          {messages.map((m) => (
-            <ChatMessage key={m.id} message={m} />
+          {messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
           ))}
           {isStreaming && (
             <ChatMessage
