@@ -25,27 +25,31 @@ export const chatRouter = createTRPCRouter({
 
   // Procedure to get all messages for a specific chat
   getMessages: protectedProcedure
-    .input(z.object({ chatId: z.string() }))
+    .input(z.object({ chatId: z.string().optional() }))
     .query(async ({ ctx, input }) => {
-      // Verify the user owns this chat
-      const chat = await ctx.db.query.chats.findFirst({
-        where: (chats, { and, eq }) =>
-          and(
-            eq(chats.id, input.chatId),
-            eq(chats.userId, ctx.session.user.id),
-          ),
-      });
+      if (input.chatId) {
+        // Verify the user owns this chat
+        const chat = await ctx.db.query.chats.findFirst({
+          where: (chats, { and, eq }) =>
+            and(
+              eq(chats.id, input.chatId!),
+              eq(chats.userId, ctx.session.user.id),
+            ),
+        });
 
-      if (!chat) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Chat not found" });
+        if (!chat) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Chat not found" });
+        }
+
+        const chatMessages = await ctx.db.query.messages.findMany({
+          where: eq(messages.chatId, input.chatId),
+          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+        });
+
+        return chatMessages;
       }
 
-      const chatMessages = await ctx.db.query.messages.findMany({
-        where: eq(messages.chatId, input.chatId),
-        orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-      });
-
-      return chatMessages;
+      return [];
     }),
 
   addMessage: protectedProcedure
