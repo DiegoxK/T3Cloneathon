@@ -58,6 +58,7 @@ export const chatRouter = createTRPCRouter({
         chatId: z.string().optional(),
         role: z.enum(["user", "assistant"]),
         messageContent: z.string(),
+        model: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -97,6 +98,7 @@ export const chatRouter = createTRPCRouter({
           chatId: currentChatId,
           role: input.role,
           content: input.messageContent,
+          model: input.role === "assistant" ? input.model : null,
         },
       ]);
 
