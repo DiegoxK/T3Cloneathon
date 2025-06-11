@@ -33,7 +33,10 @@ const generateAiResponse = async (
 };
 
 interface UseChatStreamProps {
-  onFinish?: (completion: { assistantContent: string; chatId: string }) => void;
+  onFinish?: (completion: {
+    assistantContent: string;
+    chatId?: string;
+  }) => void;
   onError?: (error: Error) => void;
 }
 
@@ -74,14 +77,9 @@ export function useChatStream({ onFinish, onError }: UseChatStreamProps = {}) {
       }
 
       setIsStreaming(false);
-      console.log(
-        "chaid froms stream message context:",
-        context.messages[0]?.chatId ?? "",
-      );
-
       onFinish?.({
         assistantContent: fullResponse,
-        chatId: context.messages[0]?.chatId ?? "",
+        chatId: context.messages[0]?.chatId,
       });
     },
     onError: (error) => {
