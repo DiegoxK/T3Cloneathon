@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SendHorizonal } from "lucide-react";
 
 import { ChatMessage } from "./chat-message";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { generateId, type CoreMessage } from "ai";
 import { useChatStream } from "@/hooks/use-chat-stream";
@@ -125,10 +125,11 @@ export function ChatView({ chatId }: ChatViewProps) {
     },
   });
 
-  // Custom submit handler
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!input) return;
+
+    setInput("");
 
     addMessage.mutate({
       chatId: chatId,
