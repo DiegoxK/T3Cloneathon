@@ -29,6 +29,8 @@ export function ChatView({ chatId }: ChatViewProps) {
 
   const { stream, generation, isStreaming } = useChatStream({
     onFinish: ({ assistantContent, chatId }) => {
+      if (!chatId) throw new Error("No chat id from user message context");
+
       addMessage.mutate({
         chatId: chatId,
         role: "assistant",
@@ -75,9 +77,13 @@ export function ChatView({ chatId }: ChatViewProps) {
             messages: currentData,
           });
         }
-      } else if (!chatId) {
+      } else {
+        const previousMessages = utils.chat.getMessages.getData({});
+
         utils.chat.getMessages.setData({}, () => {
-          return [optimisticEntry];
+          if (!previousMessages) return [optimisticEntry];
+
+          return [...previousMessages, optimisticEntry];
         });
       }
 
@@ -89,12 +95,10 @@ export function ChatView({ chatId }: ChatViewProps) {
       const isFirstMessage = !chatId;
       const sender = context?.sender;
 
-      console.log("Is first message?: ", isFirstMessage);
-
       if (isFirstMessage && sender === "user") {
         const tempId = generateId();
 
-        const optimisticEntry: Message = {
+        const userEntry: Message = {
           id: tempId,
           createdAt: new Date(),
           chatId: data.chatId,
@@ -103,18 +107,17 @@ export function ChatView({ chatId }: ChatViewProps) {
         };
 
         stream({
-          messages: [optimisticEntry],
+          messages: [userEntry],
         });
       }
       if (isFirstMessage && sender === "assistant") {
+        void utils.chat.list.invalidate();
         router.push(`/chat/${data.chatId}`, { scroll: false });
       }
 
       if (!isFirstMessage) {
         void utils.chat.getMessages.invalidate({ chatId });
       }
-
-      void utils.chat.list.invalidate();
     },
     onError: (err) => {
       console.error("Failed to save message:", err);
