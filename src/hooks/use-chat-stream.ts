@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { type CoreMessage } from "ai";
+import type { Message } from "@/app/_components/chat-view";
 
 interface ChatStreamContext {
-  messages: CoreMessage[];
+  messages: Message[];
   model?: string;
 }
 
@@ -32,7 +33,7 @@ const generateAiResponse = async (
 };
 
 interface UseChatStreamProps {
-  onFinish?: (completion: string) => void;
+  onFinish?: (completion: { assistantContent: string; chatId: string }) => void;
   onError?: (error: Error) => void;
 }
 
@@ -46,7 +47,7 @@ export function useChatStream({ onFinish, onError }: UseChatStreamProps = {}) {
     ChatStreamContext
   >({
     mutationFn: generateAiResponse,
-    onSuccess: async (stream, variables) => {
+    onSuccess: async (stream, context) => {
       setIsStreaming(true);
       setGeneration("");
 
@@ -73,7 +74,15 @@ export function useChatStream({ onFinish, onError }: UseChatStreamProps = {}) {
       }
 
       setIsStreaming(false);
-      onFinish?.(fullResponse);
+      console.log(
+        "chaid froms stream message context:",
+        context.messages[0]?.chatId ?? "",
+      );
+
+      onFinish?.({
+        assistantContent: fullResponse,
+        chatId: context.messages[0]?.chatId ?? "",
+      });
     },
     onError: (error) => {
       setIsStreaming(false);
