@@ -45,7 +45,7 @@ export function ChatSidebar({ chats, activeChatId }: ChatSidebarProps) {
             </SidebarMenuButton>
           </Link>
           <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100">
-            <ShareChatButton chat={chat} />
+            {/* <ShareChatButton chat={chat} /> */}
           </div>
         </SidebarMenuItem>
       ))}
