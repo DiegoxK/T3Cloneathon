@@ -50,6 +50,8 @@ export async function POST(req: Request) {
 
   const modelToUse = data?.model ?? "anthropic/claude-3-haiku";
 
+  console.log("MODEL SEND TO OPEN ROUTER: ", modelToUse);
+
   const result = streamText({
     model: openrouter(modelToUse),
     system: "You are a helpful and friendly chatbot.",
