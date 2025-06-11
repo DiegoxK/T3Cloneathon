@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button";
 import { ChatSidebar } from "./chat-sidebar";
 import { ChatView } from "./chat-view";
 import { SettingsDialog } from "./settings-dialog";
+
 import Link from "next/link";
+import { ModelSelector } from "./model-selector";
 
 export function ChatLayout({ chatId }: { chatId?: string }) {
   const [chatList] = api.chat.list.useSuspenseQuery();
@@ -45,11 +47,10 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
           <SettingsDialog />
         </SidebarFooter>
       </Sidebar>
-
       <main className="flex h-screen w-full flex-col overflow-hidden">
         <div className="flex items-center gap-2 border-b p-2">
           <SidebarTrigger />
-          <h2 className="font-semibold">T3 Chat Clone</h2>
+          <ModelSelector />
         </div>
 
         <ChatView chatId={chatId} />
