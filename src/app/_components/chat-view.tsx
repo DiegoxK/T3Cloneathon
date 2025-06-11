@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SendHorizonal } from "lucide-react";
 
 import { ChatMessage } from "./chat-message";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { generateId, type CoreMessage } from "ai";
 import { useChatStream } from "@/hooks/use-chat-stream";
@@ -18,15 +18,14 @@ type Message = RouterOutputs["chat"]["getMessages"][number];
 
 interface ChatViewProps {
   chatId?: string;
-  messages: Message[];
 }
 
-export function ChatView({ chatId, messages }: ChatViewProps) {
+export function ChatView({ chatId }: ChatViewProps) {
   const utils = api.useUtils();
   const router = useRouter();
 
   const [input, setInput] = useState("");
-  const [firstMessage, setFirstMessage] = useState<Message>();
+  const [messages] = api.chat.getMessages.useSuspenseQuery({ chatId });
 
   const { stream, generation, isStreaming } = useChatStream({
     onFinish: (assistantContent) => {
@@ -38,11 +37,16 @@ export function ChatView({ chatId, messages }: ChatViewProps) {
     },
   });
 
-  if (chatId && messages.length === 1) {
-    stream({
-      messages,
-    });
-  }
+  useEffect(() => {
+    if (
+      chatId &&
+      messages.length === 1 &&
+      messages[0]?.role === "user" &&
+      !isStreaming
+    ) {
+      stream({ messages });
+    }
+  }, [chatId, isStreaming, messages, stream]);
 
   const addMessage = api.chat.addMessage.useMutation({
     onMutate: (input) => {
@@ -85,7 +89,9 @@ export function ChatView({ chatId, messages }: ChatViewProps) {
         }
       }
       if (!chatId && input.role === "user") {
-        setFirstMessage(optimisticEntry);
+        utils.chat.getMessages.setData({}, () => {
+          return [optimisticEntry];
+        });
       }
     },
     onSuccess: (data) => {
@@ -120,7 +126,6 @@ export function ChatView({ chatId, messages }: ChatViewProps) {
     <div className="flex flex-col">
       <ScrollArea className="h-[calc(100vh-115px)] p-4">
         <div className="space-y-4">
-          {!chatId && firstMessage && <ChatMessage message={firstMessage} />}
           {messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
           ))}
