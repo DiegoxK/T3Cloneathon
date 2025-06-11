@@ -21,9 +21,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
   const chatId = resolvedParams.chatId?.[0];
 
   void api.chat.list.prefetch();
-  if (chatId) {
-    void api.chat.getMessages.prefetch({ chatId });
-  }
+  void api.chat.getMessages.prefetch({ chatId });
 
   return (
     <HydrateClient>
