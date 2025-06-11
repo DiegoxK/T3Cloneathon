@@ -14,7 +14,7 @@ import { generateId, type CoreMessage } from "ai";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import { useRouter } from "next/navigation";
 
-type Message = RouterOutputs["chat"]["getMessages"][number];
+export type Message = RouterOutputs["chat"]["getMessages"][number];
 
 interface ChatViewProps {
   chatId?: string;
@@ -28,29 +28,17 @@ export function ChatView({ chatId }: ChatViewProps) {
   const [messages] = api.chat.getMessages.useSuspenseQuery({ chatId });
 
   const { stream, generation, isStreaming } = useChatStream({
-    onFinish: (assistantContent) => {
+    onFinish: ({ assistantContent, chatId }) => {
       addMessage.mutate({
-        chatId,
+        chatId: chatId,
         role: "assistant",
         messageContent: assistantContent,
       });
     },
   });
 
-  useEffect(() => {
-    if (
-      chatId &&
-      messages.length === 1 &&
-      messages[0]?.role === "user" &&
-      !isStreaming
-    ) {
-      stream({ messages });
-    }
-  }, [chatId, isStreaming, messages, stream]);
-
   const addMessage = api.chat.addMessage.useMutation({
     onMutate: (input) => {
-      void utils.chat.getMessages.cancel();
       const tempId = generateId();
 
       const optimisticEntry: Message = {
@@ -87,23 +75,46 @@ export function ChatView({ chatId }: ChatViewProps) {
             messages: currentData,
           });
         }
-      }
-      if (!chatId && input.role === "user") {
+      } else if (!chatId) {
         utils.chat.getMessages.setData({}, () => {
           return [optimisticEntry];
         });
       }
+
+      const sender = input.role;
+
+      return { sender };
     },
-    onSuccess: (data) => {
-      if (!chatId) {
+    onSuccess: (data, variables, context) => {
+      const isFirstMessage = !chatId;
+      const sender = context?.sender;
+
+      console.log("Is first message?: ", isFirstMessage);
+
+      if (isFirstMessage && sender === "user") {
+        const tempId = generateId();
+
+        const optimisticEntry: Message = {
+          id: tempId,
+          createdAt: new Date(),
+          chatId: data.chatId,
+          role: variables.role,
+          content: variables.messageContent,
+        };
+
+        stream({
+          messages: [optimisticEntry],
+        });
+      }
+      if (isFirstMessage && sender === "assistant") {
         router.push(`/chat/${data.chatId}`, { scroll: false });
       }
 
-      void utils.chat.list.invalidate();
-
-      if (chatId) {
+      if (!isFirstMessage) {
         void utils.chat.getMessages.invalidate({ chatId });
       }
+
+      void utils.chat.list.invalidate();
     },
     onError: (err) => {
       console.error("Failed to save message:", err);
