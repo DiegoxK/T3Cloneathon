@@ -42,6 +42,7 @@ export const messages = createTable("message", (d) => ({
     .timestamp({ withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
+  model: d.text(),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
