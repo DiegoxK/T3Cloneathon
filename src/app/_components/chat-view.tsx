@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SendHorizonal } from "lucide-react";
 
 import { ChatMessage } from "./chat-message";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { generateId, type CoreMessage } from "ai";
 import { useChatStream } from "@/hooks/use-chat-stream";
@@ -26,10 +26,19 @@ export function ChatView({ chatId }: ChatViewProps) {
   const utils = api.useUtils();
   const router = useRouter();
 
-  const { selectedModel } = useModel();
+  const { selectedModel, setSelectedModel } = useModel();
 
   const [input, setInput] = useState("");
   const [messages] = api.chat.getMessages.useSuspenseQuery({ chatId });
+
+  useEffect(() => {
+    if (chatId) {
+      const lastModel = messages[messages.length - 1]?.model;
+      if (typeof lastModel === "string") {
+        setSelectedModel(lastModel);
+      }
+    }
+  }, [chatId, messages, setSelectedModel]);
 
   const { stream, generation, isStreaming } = useChatStream({
     onFinish: ({ assistantContent, chatId }) => {
