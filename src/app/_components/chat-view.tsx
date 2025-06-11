@@ -14,6 +14,8 @@ import { generateId, type CoreMessage } from "ai";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import { useRouter } from "next/navigation";
 
+import { useModel } from "@/context/model-context";
+
 export type Message = RouterOutputs["chat"]["getMessages"][number];
 
 interface ChatViewProps {
@@ -23,6 +25,8 @@ interface ChatViewProps {
 export function ChatView({ chatId }: ChatViewProps) {
   const utils = api.useUtils();
   const router = useRouter();
+
+  const { selectedModel } = useModel();
 
   const [input, setInput] = useState("");
   const [messages] = api.chat.getMessages.useSuspenseQuery({ chatId });
@@ -35,6 +39,7 @@ export function ChatView({ chatId }: ChatViewProps) {
         chatId: chatId,
         role: "assistant",
         messageContent: assistantContent,
+        model: selectedModel,
       });
     },
   });
@@ -49,6 +54,7 @@ export function ChatView({ chatId }: ChatViewProps) {
         chatId: "",
         role: input.role,
         content: input.messageContent,
+        model: input.role === "assistant" ? selectedModel : null,
       };
 
       if (chatId) {
@@ -75,6 +81,7 @@ export function ChatView({ chatId }: ChatViewProps) {
 
           stream({
             messages: currentData,
+            model: selectedModel,
           });
         }
       } else {
@@ -104,10 +111,12 @@ export function ChatView({ chatId }: ChatViewProps) {
           chatId: data.chatId,
           role: variables.role,
           content: variables.messageContent,
+          model: null,
         };
 
         stream({
           messages: [userEntry],
+          model: selectedModel,
         });
       }
       if (isFirstMessage && sender === "assistant") {
@@ -135,12 +144,13 @@ export function ChatView({ chatId }: ChatViewProps) {
       chatId: chatId,
       role: "user",
       messageContent: input,
+      model: selectedModel,
     });
   };
 
   return (
     <div className="flex flex-col">
-      <ScrollArea className="h-[calc(100vh-115px)] p-4">
+      <ScrollArea className="h-[calc(100vh-122px)] p-4">
         <div className="space-y-4">
           {messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
