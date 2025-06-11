@@ -112,6 +112,7 @@ export function ChatView({ chatId }: ChatViewProps) {
       }
       if (isFirstMessage && sender === "assistant") {
         void utils.chat.list.invalidate();
+        void utils.chat.getMessages.invalidate({});
         router.push(`/chat/${data.chatId}`, { scroll: false });
       }
 
