@@ -23,11 +23,6 @@ import Link from "next/link";
 export function ChatLayout({ chatId }: { chatId?: string }) {
   const [chatList] = api.chat.list.useSuspenseQuery();
 
-  // Only call if chatId is defined
-  const [messages] = chatId
-    ? api.chat.getMessages.useSuspenseQuery({ chatId })
-    : [[]];
-
   return (
     <div className="flex h-screen w-full items-start">
       <Sidebar collapsible="icon">
@@ -57,7 +52,7 @@ export function ChatLayout({ chatId }: { chatId?: string }) {
           <h2 className="font-semibold">T3 Chat Clone</h2>
         </div>
 
-        <ChatView chatId={chatId} messages={messages} />
+        <ChatView chatId={chatId} />
       </main>
     </div>
   );
