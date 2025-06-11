@@ -51,6 +51,10 @@ export function ChatView({ chatId }: ChatViewProps) {
         model: selectedModel,
       });
     },
+    onError: (error) => {
+      console.error("Streaming error:", error);
+      addMessage.reset();
+    },
   });
 
   const addMessage = api.chat.addMessage.useMutation({
@@ -131,6 +135,7 @@ export function ChatView({ chatId }: ChatViewProps) {
       if (isFirstMessage && sender === "assistant") {
         void utils.chat.list.invalidate();
         void utils.chat.getMessages.invalidate({});
+        void utils.chat.getMessages.invalidate({ chatId: data.chatId });
         router.push(`/chat/${data.chatId}`, { scroll: false });
       }
 
