@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useRouter } from "next/navigation";
-import { useEffect, type FormEvent } from "react";
+import { useEffect, useRef, type FormEvent } from "react";
 
 import { generateUUID } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -19,20 +19,17 @@ interface ChatViewProps {
 export default function ChatView({ chatId }: ChatViewProps) {
   const router = useRouter();
   const utils = api.useUtils();
-  const { selectedModel } = useModel();
+  const { selectedModel, setSelectedModel } = useModel();
+  const hasSetInitialModel = useRef(false);
 
   const [dbMessages] = api.chat.getMessages.useSuspenseQuery(
     { chatId },
-    {
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
+    { refetchOnWindowFocus: false, refetchOnReconnect: false },
   );
 
   const { mutate: saveMessage } = api.chat.addMessage.useMutation({
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       void utils.chat.list.invalidate();
-      console.log("success");
     },
     onError: (err) => {
       console.error("Failed to save message:", err);
@@ -50,12 +47,8 @@ export default function ChatView({ chatId }: ChatViewProps) {
     id: chatId,
     api: "/api/chat",
     initialMessages: dbMessages,
-
-    body: {
-      model: selectedModel,
-    },
-
-    onFinish(message, options) {
+    body: { model: selectedModel },
+    onFinish(message) {
       if (chatId) {
         saveMessage({
           chatId,
@@ -68,27 +61,44 @@ export default function ChatView({ chatId }: ChatViewProps) {
   });
 
   useEffect(() => {
+    hasSetInitialModel.current = false;
+
+    if (!chatId) {
+      setSelectedModel("anthropic/claude-3-haiku");
+    }
+  }, [chatId, setSelectedModel]);
+
+  useEffect(() => {
+    if (chatId && dbMessages.length > 0 && !hasSetInitialModel.current) {
+      const lastMessage = dbMessages[dbMessages.length - 1];
+      if (
+        lastMessage?.role === "assistant" &&
+        typeof lastMessage.model === "string"
+      ) {
+        setSelectedModel(lastMessage.model);
+      }
+      hasSetInitialModel.current = true;
+    }
+  }, [chatId, dbMessages, setSelectedModel]);
+
+  useEffect(() => {
     const pendingMessage = sessionStorage.getItem(PENDING_MESSAGE_KEY);
 
-    if (pendingMessage && messages.length === 0 && !isLoading) {
+    if (pendingMessage && messages.length === 0 && !isLoading && chatId) {
+      saveMessage({
+        chatId,
+        role: "user",
+        messageContent: pendingMessage,
+      });
+
       void append({
         role: "user",
         content: pendingMessage,
       });
 
-      if (chatId) {
-        saveMessage({
-          chatId,
-          role: "user",
-          messageContent: pendingMessage,
-        });
-      }
-
       sessionStorage.removeItem(PENDING_MESSAGE_KEY);
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatId]);
+  }, [chatId, messages.length, isLoading, append, saveMessage]);
 
   const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -99,21 +109,12 @@ export default function ChatView({ chatId }: ChatViewProps) {
       sessionStorage.setItem(PENDING_MESSAGE_KEY, input);
       router.push(`/chat/${newChatId}`);
     } else {
-      const formData = new FormData(e.currentTarget);
-      const value = formData.get("userInput");
-
+      const userMessageContent = input;
       handleSubmit(e);
-
-      // check later if value is file
-      if (typeof value !== "string") {
-        console.error("Invalid input");
-        return;
-      }
-
       saveMessage({
         chatId,
         role: "user",
-        messageContent: value,
+        messageContent: userMessageContent,
       });
     }
   };

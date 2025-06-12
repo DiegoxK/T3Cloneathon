@@ -30,7 +30,6 @@ export function ChatForm({
     <div className="flex-shrink-0 border-t p-4">
       <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
         <Textarea
-          name="userInput"
           value={input}
           placeholder="Ask me anything..."
           onChange={handleInputChange}
