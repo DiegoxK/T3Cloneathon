@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { api } from "@/trpc/server";
-import { ChatMessage } from "@/app/_components/chat-message";
+import { ChatMessage } from "@/app/(routes)/chat/test/_components/chat-message";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
