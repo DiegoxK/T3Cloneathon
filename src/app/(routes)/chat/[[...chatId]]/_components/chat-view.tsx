@@ -1,8 +1,8 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
+import { useChat, type Message } from "@ai-sdk/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, type FormEvent } from "react";
+import { useEffect, useRef, type FormEvent, useCallback } from "react";
 
 import { generateUUID } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -21,8 +21,7 @@ export default function ChatView({ chatId }: ChatViewProps) {
   const utils = api.useUtils();
   const { selectedModel, setSelectedModel } = useModel();
 
-  // Track if we've processed pending message for this chat
-  const hasPendingMessageProcessed = useRef<string | null>(null);
+  const processedPendingChatId = useRef<string | null>(null);
 
   const [dbMessages] = api.chat.getMessages.useSuspenseQuery(
     { chatId },
@@ -38,93 +37,85 @@ export default function ChatView({ chatId }: ChatViewProps) {
     },
   });
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    append,
-  } = useChat({
-    id: chatId,
-    api: "/api/chat",
-    initialMessages: dbMessages,
-    body: { model: selectedModel },
-    onFinish(message) {
-      if (chatId) {
-        saveMessage({
-          chatId,
-          role: "assistant",
-          messageContent: message.content,
-          model: selectedModel,
-        });
-      }
-    },
-  });
+  const { messages, input, setInput, handleInputChange, isLoading, append } =
+    useChat({
+      id: chatId,
+      api: "/api/chat",
+      initialMessages: dbMessages,
+      body: { model: selectedModel },
 
-  // Handle model selection based on chat context
-  useEffect(() => {
-    if (!chatId) {
-      // New chat - use default model
-      setSelectedModel("anthropic/claude-3-haiku");
-    } else if (dbMessages.length > 0) {
-      // Existing chat - use model from last assistant message with model info
-      const lastAssistantMessage = dbMessages
-        .slice()
-        .reverse()
-        .find((msg) => msg.role === "assistant" && msg.model);
+      onFinish(message) {
+        if (chatId) {
+          saveMessage({
+            chatId,
+            role: "assistant",
+            messageContent: message.content,
+            model: selectedModel,
+          });
+        }
+      },
+    });
 
-      if (lastAssistantMessage?.model) {
-        setSelectedModel(lastAssistantMessage.model);
-      }
-    }
-  }, [chatId, dbMessages, setSelectedModel]);
+  const processUserMessage = useCallback(
+    (content: string) => {
+      if (!chatId) return;
 
-  // Handle pending message from sessionStorage (only once per chat)
-  useEffect(() => {
-    // Skip if already processed for this chat or no chatId
-    if (!chatId || hasPendingMessageProcessed.current === chatId) {
-      return;
-    }
-
-    const pendingMessage = sessionStorage.getItem(PENDING_MESSAGE_KEY);
-
-    if (pendingMessage && messages.length === 0 && !isLoading) {
-      // Mark as processed immediately to prevent double execution
-      hasPendingMessageProcessed.current = chatId;
-      sessionStorage.removeItem(PENDING_MESSAGE_KEY);
-
-      // Save and append the message
       saveMessage({
         chatId,
         role: "user",
-        messageContent: pendingMessage,
+        messageContent: content,
       });
 
       void append({
         role: "user",
-        content: pendingMessage,
+        content: content,
       });
-    }
+
+      setInput("");
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatId, messages.length, isLoading]);
+    [chatId, saveMessage, append],
+  );
+
+  useEffect(() => {
+    if (!chatId) {
+      setSelectedModel("anthropic/claude-3-haiku");
+      return;
+    }
+
+    const lastAssistantMessageWithModel = dbMessages
+      .slice()
+      .reverse()
+      .find((msg) => msg.role === "assistant" && msg.model);
+
+    if (lastAssistantMessageWithModel?.model) {
+      setSelectedModel(lastAssistantMessageWithModel.model);
+    }
+  }, [chatId, dbMessages, setSelectedModel]);
+
+  useEffect(() => {
+    if (chatId && processedPendingChatId.current !== chatId) {
+      const pendingMessage = sessionStorage.getItem(PENDING_MESSAGE_KEY);
+
+      if (pendingMessage) {
+        sessionStorage.removeItem(PENDING_MESSAGE_KEY);
+        processedPendingChatId.current = chatId;
+        processUserMessage(pendingMessage);
+      }
+    }
+  }, [chatId, processUserMessage]);
 
   const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    const messageContent = input.trim();
+    if (!messageContent) return;
 
     if (!chatId) {
       const newChatId = generateUUID();
-      sessionStorage.setItem(PENDING_MESSAGE_KEY, input);
+      sessionStorage.setItem(PENDING_MESSAGE_KEY, messageContent);
       router.push(`/chat/${newChatId}`);
     } else {
-      const userMessageContent = input;
-      handleSubmit(e);
-      saveMessage({
-        chatId,
-        role: "user",
-        messageContent: userMessageContent,
-      });
+      processUserMessage(messageContent);
     }
   };
 
