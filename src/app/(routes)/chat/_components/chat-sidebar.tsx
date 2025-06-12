@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { PlusIcon } from "lucide-react";
-import { SettingsDialog } from "../test/_components/settings-dialog";
+import { SettingsDialog } from "./settings-dialog";
 import SidebarChatMenu from "./sidebar-chat-menu";
 
 interface ChatSidebarProps {

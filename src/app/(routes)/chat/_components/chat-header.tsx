@@ -1,5 +1,5 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ModelSelector } from "../test/_components/model-selector";
+import { ModelSelector } from "./model-selector";
 
 export default function ChatHeader() {
   return (
