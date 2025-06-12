@@ -21,6 +21,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
   const chatId = resolvedParams.chatId?.[0];
 
   void api.chat.list.prefetch();
+  void api.chat.getMessages.prefetch({ chatId });
 
   return (
     <div className="flex h-screen w-full">
