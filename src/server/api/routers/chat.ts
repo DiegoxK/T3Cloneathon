@@ -38,7 +38,7 @@ export const chatRouter = createTRPCRouter({
         });
 
         if (!chat) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Chat not found" });
+          return [];
         }
 
         const chatMessages = await ctx.db.query.messages.findMany({
