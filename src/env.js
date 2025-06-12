@@ -19,6 +19,7 @@ export const env = createEnv({
     EMAIL_FROM: z.string().email(),
     ENCRYPTION_SECRET: z.string(),
     OPENAI_API_KEY: z.string(),
+    TAVILY_API_KEY: z.string(),
     OPENROUTER_API_KEY: z.string(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -48,6 +49,7 @@ export const env = createEnv({
     EMAIL_FROM: process.env.EMAIL_FROM,
     ENCRYPTION_SECRET: process.env.ENCRYPTION_SECRET,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     NODE_ENV: process.env.NODE_ENV,
   },
