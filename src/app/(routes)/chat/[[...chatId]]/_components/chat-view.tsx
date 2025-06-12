@@ -37,7 +37,7 @@ export default function ChatView({ chatId }: ChatViewProps) {
     },
   });
 
-  const { messages, input, setInput, handleInputChange, isLoading, append } =
+  const { messages, input, setInput, handleInputChange, status, append } =
     useChat({
       id: chatId,
       api: "/api/chat",
@@ -55,6 +55,8 @@ export default function ChatView({ chatId }: ChatViewProps) {
         }
       },
     });
+
+  const isResponding = status !== "ready" && status !== "error";
 
   const processUserMessage = useCallback(
     (content: string) => {
@@ -124,12 +126,12 @@ export default function ChatView({ chatId }: ChatViewProps) {
       <div className="text-muted-foreground border-b p-4 text-sm font-medium">
         Chat ID: {chatId ?? "New Chat"}
       </div>
-      <ChatList messages={messages} isLoading={isLoading} />
+      <ChatList messages={messages} isLoading={isResponding} />
       <ChatForm
         input={input}
         handleInputChange={handleInputChange}
         handleFormSubmit={handleFormSubmit}
-        isLoading={isLoading}
+        isLoading={isResponding}
       />
     </div>
   );
