@@ -55,56 +55,49 @@ export const chatRouter = createTRPCRouter({
   addMessage: protectedProcedure
     .input(
       z.object({
-        chatId: z.string().optional(),
+        // The chatId is now required from the client.
+        // The client will generate it on the very first message.
+        chatId: z.string(),
         role: z.enum(["user", "assistant"]),
         messageContent: z.string(),
         model: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      let currentChatId = input.chatId;
+      // Check if a chat with the given ID already exists for the logged-in user.
+      const existingChat = await ctx.db.query.chats.findFirst({
+        where: and(
+          eq(chats.id, input.chatId),
+          eq(chats.userId, ctx.session.user.id),
+        ),
+      });
 
-      // If no chatId, it's a new chat
-      if (!currentChatId) {
+      // If the chat does NOT exist, create it using the ID from the client.
+      if (!existingChat) {
         const { text: title } = await generateText({
           model: openai("gpt-4o-mini"),
           prompt: `Summarize the following user message in 5 words or less to use as a chat title. Do not use quotes or punctuation. Message: "${input.messageContent}"`,
         });
 
-        const [newChat] = await ctx.db
-          .insert(chats)
-          .values({
-            userId: ctx.session.user.id,
-            title: title.trim(),
-          })
-          .returning();
-
-        if (!newChat) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        currentChatId = newChat.id;
-      } else {
-        // If chatId exists, verify ownership
-        const chat = await ctx.db.query.chats.findFirst({
-          where: and(
-            eq(chats.id, currentChatId),
-            eq(chats.userId, ctx.session.user.id),
-          ),
+        // Insert the new chat record with the client-provided ID.
+        await ctx.db.insert(chats).values({
+          id: input.chatId,
+          userId: ctx.session.user.id,
+          title: title.trim(),
         });
-        if (!chat) throw new TRPCError({ code: "UNAUTHORIZED" });
       }
 
-      // Save the messages
+      // Save the message to the database, associated with the chat ID.
       await ctx.db.insert(messages).values([
         {
-          chatId: currentChatId,
+          chatId: input.chatId,
           role: input.role,
           content: input.messageContent,
           model: input.role === "assistant" ? input.model : null,
         },
       ]);
-
-      return { chatId: currentChatId };
+      return { chatId: input.chatId };
     }),
-
   updateSharing: protectedProcedure
     .input(
       z.object({
