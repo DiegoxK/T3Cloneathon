@@ -24,7 +24,10 @@ export default function ChatSidebar({ chatId }: ChatSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <Link href="/chat" className="w-full">
-              <Button variant="outline" className="w-full justify-start">
+              <Button
+                variant="outline"
+                className="flex w-full items-center justify-start"
+              >
                 <PlusIcon className="mr-2 size-4" />
                 <span>New Chat</span>
               </Button>
