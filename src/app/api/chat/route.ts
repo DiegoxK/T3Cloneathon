@@ -47,6 +47,12 @@ export async function POST(req: Request) {
     model: openrouter(modelToUse),
     system: "You are a helpful and friendly chatbot.",
     messages,
+    onError: (error) => {
+      console.log("THERE WAS AN ERROR: ", error);
+    },
+    onFinish: (message) => {
+      console.log("Message finished:", message);
+    },
   });
 
   return result.toDataStreamResponse();
