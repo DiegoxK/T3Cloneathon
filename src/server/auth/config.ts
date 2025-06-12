@@ -11,12 +11,13 @@ import {
 } from "@/server/db/schema";
 
 import { env } from "@/env";
+import type { User } from "@/types";
+
+type UserSession = Omit<User, "emailVerified">;
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
-    user: {
-      id: string;
-    } & DefaultSession["user"];
+    user: UserSession;
   }
 }
 
@@ -47,6 +48,7 @@ export const authConfig = {
       user: {
         ...session.user,
         id: user.id,
+        user,
       },
     }),
   },
