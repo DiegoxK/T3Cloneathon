@@ -51,6 +51,10 @@ export default function ChatView({ chatId }: ChatViewProps) {
     api: "/api/chat",
     initialMessages: dbMessages,
 
+    body: {
+      model: selectedModel,
+    },
+
     onFinish(message, options) {
       if (chatId) {
         saveMessage({
