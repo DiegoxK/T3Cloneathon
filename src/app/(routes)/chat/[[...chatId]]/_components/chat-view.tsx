@@ -20,7 +20,9 @@ export default function ChatView({ chatId }: ChatViewProps) {
   const router = useRouter();
   const utils = api.useUtils();
   const { selectedModel, setSelectedModel } = useModel();
-  const hasSetInitialModel = useRef(false);
+
+  // Track if we've processed pending message for this chat
+  const hasPendingMessageProcessed = useRef<string | null>(null);
 
   const [dbMessages] = api.chat.getMessages.useSuspenseQuery(
     { chatId },
@@ -60,31 +62,39 @@ export default function ChatView({ chatId }: ChatViewProps) {
     },
   });
 
+  // Handle model selection based on chat context
   useEffect(() => {
-    hasSetInitialModel.current = false;
-
     if (!chatId) {
+      // New chat - use default model
       setSelectedModel("anthropic/claude-3-haiku");
-    }
-  }, [chatId, setSelectedModel]);
+    } else if (dbMessages.length > 0) {
+      // Existing chat - use model from last assistant message with model info
+      const lastAssistantMessage = dbMessages
+        .slice()
+        .reverse()
+        .find((msg) => msg.role === "assistant" && msg.model);
 
-  useEffect(() => {
-    if (chatId && dbMessages.length > 0 && !hasSetInitialModel.current) {
-      const lastMessage = dbMessages[dbMessages.length - 1];
-      if (
-        lastMessage?.role === "assistant" &&
-        typeof lastMessage.model === "string"
-      ) {
-        setSelectedModel(lastMessage.model);
+      if (lastAssistantMessage?.model) {
+        setSelectedModel(lastAssistantMessage.model);
       }
-      hasSetInitialModel.current = true;
     }
   }, [chatId, dbMessages, setSelectedModel]);
 
+  // Handle pending message from sessionStorage (only once per chat)
   useEffect(() => {
+    // Skip if already processed for this chat or no chatId
+    if (!chatId || hasPendingMessageProcessed.current === chatId) {
+      return;
+    }
+
     const pendingMessage = sessionStorage.getItem(PENDING_MESSAGE_KEY);
 
-    if (pendingMessage && messages.length === 0 && !isLoading && chatId) {
+    if (pendingMessage && messages.length === 0 && !isLoading) {
+      // Mark as processed immediately to prevent double execution
+      hasPendingMessageProcessed.current = chatId;
+      sessionStorage.removeItem(PENDING_MESSAGE_KEY);
+
+      // Save and append the message
       saveMessage({
         chatId,
         role: "user",
@@ -95,10 +105,9 @@ export default function ChatView({ chatId }: ChatViewProps) {
         role: "user",
         content: pendingMessage,
       });
-
-      sessionStorage.removeItem(PENDING_MESSAGE_KEY);
     }
-  }, [chatId, messages.length, isLoading, append, saveMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, messages.length, isLoading]);
 
   const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
