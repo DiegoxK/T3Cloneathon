@@ -2,6 +2,9 @@ import { type Message } from "ai";
 import { cn } from "@/lib/utils";
 import { User, Bot, Loader2 } from "lucide-react";
 
+import ReactMarkdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
+
 interface ChatMessageProps {
   message: Message;
   isLoading?: boolean;
@@ -29,7 +32,24 @@ export function ChatMessage({ message, isLoading }: ChatMessageProps) {
           isAssistant ? "bg-muted" : "bg-primary text-primary-foreground",
         )}
       >
-        {isLoading ? <Loader2 className="animate-spin" /> : message.content}
+        {isLoading ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <ReactMarkdown
+            rehypePlugins={[rehypeHighlight]}
+            components={{
+              code({ node, className, children, ...props }) {
+                return (
+                  <code className={cn(className, "rounded-md p-1")} {...props}>
+                    {children}
+                  </code>
+                );
+              },
+            }}
+          >
+            {message.content}
+          </ReactMarkdown>
+        )}
       </div>
 
       {!isAssistant && (
