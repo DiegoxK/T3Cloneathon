@@ -20,6 +20,7 @@ export const env = createEnv({
     ENCRYPTION_SECRET: z.string(),
     OPENAI_API_KEY: z.string(),
     TAVILY_API_KEY: z.string(),
+    REDIS_URL: z.string(),
     OPENROUTER_API_KEY: z.string(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -51,6 +52,7 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    REDIS_URL: process.env.REDIS_URL,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**
