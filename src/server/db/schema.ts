@@ -1,5 +1,11 @@
 import { relations, sql } from "drizzle-orm";
-import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
+import {
+  foreignKey,
+  index,
+  pgTableCreator,
+  primaryKey,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
 export const createTable = pgTableCreator((name) => `T3Cloneathon_${name}`);
@@ -27,23 +33,37 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
   messages: many(messages),
 }));
 
-export const messages = createTable("message", (d) => ({
-  id: d
-    .varchar({ length: 255 })
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  chatId: d
-    .varchar({ length: 255 })
-    .notNull()
-    .references(() => chats.id),
-  role: d.varchar({ length: 10 }).$type<"user" | "assistant">().notNull(),
-  content: d.text().notNull(),
-  createdAt: d
-    .timestamp({ withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  model: d.text(),
-}));
+export const messages = createTable(
+  "message",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    chatId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => chats.id),
+    parentMessageId: uuid("parentMessageId"),
+    role: d.varchar({ length: 10 }).$type<"user" | "assistant">().notNull(),
+    content: d.text().notNull(),
+    branchName: d.varchar({ length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+
+    model: d.text(),
+  }),
+  (table) => [
+    foreignKey({
+      columns: [table.parentMessageId],
+      foreignColumns: [table.id],
+      name: "parentMessageId_fk",
+    }),
+    index("chat_idx").on(table.chatId),
+  ],
+);
 
 export const messagesRelations = relations(messages, ({ one }) => ({
   chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),
