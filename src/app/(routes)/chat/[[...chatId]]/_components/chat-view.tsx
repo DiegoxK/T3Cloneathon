@@ -18,6 +18,7 @@ import { ChatList } from "./chat-list";
 import { ChatForm } from "./chat-form";
 import { useModel } from "@/context/model-context";
 import { findMostRecentLeaf, getBranchForMessage } from "@/lib/branch";
+import { generateId } from "ai";
 
 const PENDING_MESSAGE_KEY = "pending-chat-message";
 
@@ -37,8 +38,8 @@ export default function ChatView({ chatId }: ChatViewProps) {
 
   const { mutate: saveMessage } = api.chat.addMessage.useMutation({
     onSuccess: (data) => {
-      void utils.chat.getMessages.invalidate();
       void utils.chat.list.invalidate();
+      void utils.chat.getMessages.refetch({ chatId });
 
       lastMessage.current = data.message ?? null;
     },
@@ -77,35 +78,50 @@ export default function ChatView({ chatId }: ChatViewProps) {
     return getBranchForMessage(selectedLeafId, messagesById);
   }, [selectedLeafId, messagesById]);
 
-  const { messages, input, setInput, handleInputChange, status, append } =
-    useChat({
-      id: chatId,
-      api: "/api/chat",
-      initialMessages: currentBranch,
-      body: { model: selectedModel },
+  console.log(currentBranch);
 
-      onFinish(message) {
-        if (chatId && lastMessage?.current) {
-          saveMessage({
-            chatId,
-            role: "assistant",
-            messageContent: message.content,
-            model: selectedModel,
-            parentMessageId: lastMessage.current.id ?? undefined,
-          });
-        }
-      },
-    });
+  const {
+    messages,
+    setMessages,
+    input,
+    setInput,
+    handleInputChange,
+    status,
+    append,
+    reload,
+    data,
+  } = useChat({
+    id: chatId,
+    api: "/api/chat",
+    initialMessages: currentBranch,
+    body: { model: selectedModel },
+
+    onFinish(message) {
+      if (chatId && lastMessage?.current) {
+        saveMessage({
+          messageId: message.id,
+          chatId,
+          role: "assistant",
+          messageContent: message.content,
+          model: selectedModel,
+          parentMessageId: lastMessage.current.id ?? undefined,
+        });
+      }
+    },
+  });
+
+  console.warn(data);
 
   const isResponding = status !== "ready" && status !== "error";
 
   const processUserMessage = useCallback(
     (content: string) => {
       if (!chatId) return;
+      const messageId = generateId();
 
       if (!lastMessage?.current) {
         const firstMessage = {
-          id: generateUUID(),
+          id: messageId,
           chatId,
           role: "user" as const,
           content,
@@ -116,8 +132,8 @@ export default function ChatView({ chatId }: ChatViewProps) {
         };
 
         saveMessage({
-          messageId: firstMessage.id,
           chatId,
+          messageId: firstMessage.id,
           role: "user",
           messageContent: content,
         });
@@ -125,6 +141,7 @@ export default function ChatView({ chatId }: ChatViewProps) {
         lastMessage.current = firstMessage;
       } else {
         saveMessage({
+          messageId: messageId,
           chatId,
           role: "user",
           messageContent: content,
@@ -133,10 +150,16 @@ export default function ChatView({ chatId }: ChatViewProps) {
       }
 
       console.log("Calling append");
-      void append({
-        role: "user",
-        content: content,
-      });
+      void append(
+        {
+          id: messageId,
+          role: "user",
+          content: content,
+        },
+        {
+          data: {},
+        },
+      );
 
       setInput("");
     },
@@ -205,16 +228,48 @@ export default function ChatView({ chatId }: ChatViewProps) {
     }
   };
 
+  const handleReroll = (message: Message) => {
+    if (!chatId || !lastMessage.current) return;
+
+    if (message.parentMessageId) {
+      const parentMessageObject = messagesById.get(message.parentMessageId);
+
+      if (parentMessageObject) {
+        lastMessage.current = parentMessageObject;
+
+        const historyForReroll = getBranchForMessage(
+          message.parentMessageId,
+          messagesById,
+        );
+
+        setMessages(historyForReroll);
+
+        void reload();
+      } else {
+        console.error("not parent found");
+      }
+    } else {
+      console.error("not parent id found");
+    }
+  };
+
+  console.log(messages);
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="text-muted-foreground border-b p-4 text-sm font-medium">
         Chat ID: {chatId ?? "New Chat"}
       </div>
+
       <ChatList
         messages={messages}
+        currentBranch={currentBranch}
+        messagesById={messagesById}
         isLoading={isResponding}
+        childrenByParentId={childrenByParentId}
+        handleReroll={handleReroll}
         handleTabChange={handleTabChange}
       />
+
       <ChatForm
         input={input}
         handleInputChange={handleInputChange}
