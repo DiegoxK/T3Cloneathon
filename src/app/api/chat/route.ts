@@ -30,9 +30,9 @@ export async function POST(req: Request) {
     onError: (error) => {
       console.log("THERE WAS AN ERROR: ", error);
     },
-    onFinish: (message) => {
-      console.log("Message finished:", message);
-    },
+    // onFinish: (message) => {
+    //   console.log("Message finished:", message);
+    // },
   });
 
   return result.toDataStreamResponse();

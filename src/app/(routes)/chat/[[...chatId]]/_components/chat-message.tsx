@@ -28,7 +28,7 @@ export function ChatMessage({ message, isLoading }: ChatMessageProps) {
 
       <div
         className={cn(
-          "max-w-[80%] rounded-lg px-4 py-2 whitespace-pre-wrap",
+          "max-w-[80%] rounded-lg px-4 py-2",
           isAssistant ? "bg-muted" : "bg-primary text-primary-foreground",
         )}
       >
