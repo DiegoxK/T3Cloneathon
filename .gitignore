@@ -46,5 +46,5 @@ yarn-error.log*
 .idea
 
 # testing routes
-src/app/\(routes\)/chat/test/*
+src/app/\(routes\)/test/*
 src/app/api/chat/test/*
