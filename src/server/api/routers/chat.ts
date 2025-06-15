@@ -11,7 +11,7 @@ import { chats, messages } from "@/server/db/schema";
 import { TRPCError } from "@trpc/server";
 
 import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { getOpenRouterProvider } from "@/server/lib/openrouter";
 
 export const chatRouter = createTRPCRouter({
   // Procedure to get all chats for the logged-in user
@@ -58,9 +58,11 @@ export const chatRouter = createTRPCRouter({
         // The chatId is now required from the client.
         // The client will generate it on the very first message.
         chatId: z.string(),
+        messageId: z.string().optional(),
         role: z.enum(["user", "assistant"]),
         messageContent: z.string(),
         model: z.string().optional(),
+        parentMessageId: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -74,30 +76,41 @@ export const chatRouter = createTRPCRouter({
 
       // If the chat does NOT exist, create it using the ID from the client.
       if (!existingChat) {
+        const openrouter = getOpenRouterProvider(ctx.session);
+
         const { text: title } = await generateText({
-          model: openai("gpt-4o-mini"),
-          prompt: `Summarize the following user message in 5 words or less to use as a chat title. Do not use quotes or punctuation. Message: "${input.messageContent}"`,
+          model: openrouter("gpt-4o-mini"),
+          prompt: `Summarize the following user message in 3 words or less to use as a chat title. Do not use quotes or punctuation. Message: "${input.messageContent}"`,
         });
 
         // Insert the new chat record with the client-provided ID.
-        await ctx.db.insert(chats).values({
-          id: input.chatId,
-          userId: ctx.session.user.id,
-          title: title.trim(),
-        });
+        await ctx.db
+          .insert(chats)
+          .values({
+            id: input.chatId,
+            userId: ctx.session.user.id,
+            title: title.trim(),
+          })
+          .onConflictDoNothing();
       }
 
       // Save the message to the database, associated with the chat ID.
-      await ctx.db.insert(messages).values([
-        {
-          chatId: input.chatId,
-          role: input.role,
-          content: input.messageContent,
-          model: input.role === "assistant" ? input.model : null,
-        },
-      ]);
-      return { chatId: input.chatId };
+      const message = await ctx.db
+        .insert(messages)
+        .values([
+          {
+            id: input.messageId,
+            chatId: input.chatId,
+            role: input.role,
+            content: input.messageContent,
+            model: input.role === "assistant" ? input.model : null,
+            parentMessageId: input.parentMessageId ?? null,
+          },
+        ])
+        .returning();
+      return { message: message[0] };
     }),
+
   updateSharing: protectedProcedure
     .input(
       z.object({
