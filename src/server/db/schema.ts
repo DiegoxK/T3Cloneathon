@@ -44,7 +44,7 @@ export const messages = createTable(
       .varchar({ length: 255 })
       .notNull()
       .references(() => chats.id),
-    parentMessageId: uuid("parentMessageId"),
+    parentMessageId: d.varchar({ length: 255 }),
     role: d.varchar({ length: 10 }).$type<"user" | "assistant">().notNull(),
     content: d.text().notNull(),
     branchName: d.varchar({ length: 255 }),
