@@ -8,7 +8,7 @@ https://github.com/user-attachments/assets/4049bc25-4f80-4d20-aeff-9dd9550b8b1b
 
 🚧 **This project is a work-in-progress and is currently undergoing a significant refactor to use Convex and the latest Vercel AI SDK.** 🚧
 
-An ambitious project to build a feature-rich, multi-LLM chat application inspired by the T3 Cloneathon. The goal is to create a comprehensive, customizable, and high-performance AI chat experience that goes beyond a simple interface.
+An ambitious project to build a feature-rich, multi-LLM chat application for the [T3 Cloneathon](https://cloneathon.t3.chat/). The goal is to create a comprehensive, customizable, and high-performance AI chat experience that goes beyond a simple interface.
 
 ## Core Vision
 
